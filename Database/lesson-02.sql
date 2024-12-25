@@ -66,7 +66,7 @@ CREATE TABLE question (
     content VARCHAR(50)
 );
 -- VD: Thêm 2 question
-INSERT INTO question (content)
+INSERT INTO question (question_id, content)
 VALUES ("Câu hỏi MySQL"),
        ("Câu hỏi Java ");
 -- VD: Khóa chính 2 cột
@@ -82,7 +82,26 @@ INSERT INTO group_account (group_id, account_id, join_date)
 VALUES (1, 1, "2023-06-19"),
        (1, 1, "2024-12-24");
 
-
-
-
-
+-- FOREIGN KEY: Khóa ngoại
+-- Sự kiện: UPDATE, DELETE
+-- Hành động: NO ACTION, SET DEFAULT, SET NULL, CASCADE
+DROP TABLE IF EXISTS department;
+CREATE TABLE department (
+    id INT PRIMARY KEY,
+    name VARCHAR(50)
+);
+DROP TABLE IF EXISTS account;
+CREATE TABLE account (
+    id INT,
+    username VARCHAR(50),
+    department_id INT,
+    FOREIGN KEY (department_id)
+        REFERENCES department (id)
+        ON UPDATE CASCADE ON DELETE CASCADE
+);
+-- VD: Thêm dữ liệu
+INSERT INTO department (id, name)
+VALUES (1, "Giám đốc"),
+       (2, "Bảo vệ"  );
+INSERT INTO account (id, username, department_id)
+VALUES (1, "khoa.nv", 3);
