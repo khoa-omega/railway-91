@@ -26,9 +26,32 @@ FROM department
 LEFT JOIN account USING (department_id)
 WHERE account_id IS NULL;
 
+-- CROSS JOIN
+-- VD:
+SELECT *
+FROM department
+CROSS JOIN position;
 
+-- UNION / UNION ALL
+-- VD: Lấy ra phòng ban hoặc chức vụ có chứa kí tự "d"
+SELECT department_id AS id, department_name AS name
+FROM department
+WHERE department_name LIKE "%d%"
+UNION
+SELECT position_id AS id, position_name AS name
+FROM position
+WHERE position_name LIKE "%d%";
+-- VD:
+SELECT 1 AS month
+UNION ALL
+SELECT 1 AS month;
 
+-- INTERSECT: Giao 2 tập hợp
+SELECT 1 AS month
+INTERSECT
+SELECT 2 AS month;
 
-
-
-
+-- EXCEPT: Trừ 2 tập hợp
+SELECT 1 AS month
+EXCEPT
+SELECT 2 AS month;
