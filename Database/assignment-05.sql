@@ -269,6 +269,7 @@ VALUES                      (1         , 1      ),
 
 -- Question 1: Tạo view có chứa danh sách
 -- nhân viên thuộc phòng ban "Sale"
+CREATE OR REPLACE VIEW view_01 AS
 SELECT *
 FROM account
 WHERE department_id =
@@ -276,8 +277,62 @@ WHERE department_id =
     FROM department
     WHERE department_name = "Sale");
 
+-- Question 2: Tạo view có chứa thông tin
+-- các account tham gia vào nhiều group nhất
+CREATE OR REPLACE VIEW view_02 AS
+SELECT account.*
+FROM group_account
+RIGHT JOIN account USING (account_id)
+GROUP BY account_id
+HAVING COUNT(group_id) =
+    (SELECT MAX(group_count)
+    FROM
+        (SELECT COUNT(group_id) AS group_count
+        FROM group_account
+        RIGHT JOIN account USING (account_id)
+        GROUP BY account_id) AS t);
+
+-- Question 3: Tạo view có chứa câu hỏi
+-- có những content quá dài (content quá 10 từ
+-- được coi là quá dài) và xóa nó đi
+CREATE OR REPLACE VIEW view_03 AS
+SELECT *
+FROM question
+WHERE CHAR_LENGTH(content) > 10;
+
+DELETE FROM view_03;
+
+-- Question 4: Tạo view có chứa danh sách
+-- các phòng ban có nhiều nhân viên nhất
+CREATE OR REPLACE VIEW view_04 AS
+SELECT department.*
+FROM account
+RIGHT JOIN department USING (department_id)
+GROUP BY department_id
+HAVING COUNT(account_id) =
+    (SELECT MAX(account_count)
+    FROM
+        (SELECT COUNT(account_id) AS account_count
+        FROM account
+        RIGHT JOIN department USING (department_id)
+        GROUP BY department_id) AS t);
+
+CREATE OR REPLACE VIEW view_04 AS
+WITH c4 AS (
+    SELECT department.*, COUNT(account_id) AS account_count
+    FROM account
+    RIGHT JOIN department USING (department_id)
+    GROUP BY department_id
+)
+SELECT *
+FROM c4
+WHERE account_count =
+    (SELECT MAX(account_count)
+    FROM c4);
+
 -- Question 5: Tạo view có chứa tất các
 -- các câu hỏi do user họ Nguyễn tạo
+CREATE OR REPLACE VIEW view_05 AS
 SELECT *
 FROM question
 WHERE creator_id IN
