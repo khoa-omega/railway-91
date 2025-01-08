@@ -1,6 +1,6 @@
-DROP DATABASE IF EXISTS assignment_05;
-CREATE DATABASE assignment_05;
-USE assignment_05;
+DROP DATABASE IF EXISTS assignment_06;
+CREATE DATABASE assignment_06;
+USE assignment_06;
 
 -- Tạo bảng department
 DROP TABLE IF EXISTS department;
@@ -267,94 +267,117 @@ VALUES                      (1         , 1      ),
                             (9         , 2      ),
                             (10        , 10     );
 
--- Question 1: Tạo view có chứa danh sách
--- nhân viên thuộc phòng ban "Sale"
-CREATE OR REPLACE VIEW view_01 AS
-SELECT *
-FROM account
-WHERE department_id =
-    (SELECT department_id
+-- Question 1: Tạo store để người dùng nhập vào tên phòng ban
+-- và in ra tất cả các account thuộc phòng ban đó
+DROP PROCEDURE IF EXISTS sp_01;
+DELIMITER $$
+CREATE PROCEDURE sp_01 (IN in_department_name VARCHAR(50))
+BEGIN
+    DECLARE v_department_id INT;
+    
+    SELECT department_id INTO v_department_id
     FROM department
-    WHERE department_name = "Sale");
+    WHERE department_name = in_department_name;
+    
+    SELECT *
+    FROM account
+    WHERE department_id = v_department_id;
+END $$
+DELIMITER ;
 
--- Question 2: Tạo view có chứa thông tin
--- các account tham gia vào nhiều group nhất
-CREATE OR REPLACE VIEW view_02 AS
-SELECT account.*
-FROM group_account
-RIGHT JOIN account USING (account_id)
-GROUP BY account_id
-HAVING COUNT(group_id) =
-    (SELECT MAX(group_count)
-    FROM
-        (SELECT COUNT(group_id) AS group_count
-        FROM group_account
-        RIGHT JOIN account USING (account_id)
-        GROUP BY account_id) AS t);
+CALL sp_01("Bảo vệ");
 
-CREATE OR REPLACE VIEW view_02 AS
-WITH c2 AS (
-    SELECT account.*, COUNT(group_id) AS group_count
+-- Question 2: Tạo store để in ra số lượng account trong mỗi group
+DROP PROCEDURE IF EXISTS sp_02;
+DELIMITER $$
+CREATE PROCEDURE sp_02 ()
+BEGIN
+    SELECT `group`.*, COUNT(account_id)
     FROM group_account
-    RIGHT JOIN account USING (account_id)
-    GROUP BY account_id
-)
-SELECT *
-FROM c2
-WHERE group_count =
-    (SELECT MAX(group_count)
-    FROM c2);
+    RIGHT JOIN `group` USING (group_id)
+    GROUP BY group_id;
+END $$
+DELIMITER ;
 
--- Question 3: Tạo view có chứa câu hỏi
--- có những content quá dài (content quá 10 từ
--- được coi là quá dài) và xóa nó đi
-CREATE OR REPLACE VIEW view_03 AS
-SELECT *
-FROM question
-WHERE CHAR_LENGTH(content) > 10;
+-- Question 3: Tạo store để thống kê mỗi type question
+-- có bao nhiêu question được tạo trong tháng hiện tại
+DROP PROCEDURE IF EXISTS sp_03;
+DELIMITER $$
+CREATE PROCEDURE sp_03 ()
+BEGIN
+    WITH c1 AS (
+        SELECT *
+        FROM question
+        WHERE MONTH(create_date) = MONTH(CURRENT_DATE)
+        AND YEAR(create_date) = YEAR(CURRENT_DATE)
+    )
+    SELECT type_question.*, COUNT(question_id)
+    FROM c1
+    RIGHT JOIN type_question USING (type_id)
+    GROUP BY type_id;
+END $$
+DELIMITER ;
 
-DELETE FROM view_03;
-
--- Question 4: Tạo view có chứa danh sách
--- các phòng ban có nhiều nhân viên nhất
-CREATE OR REPLACE VIEW view_04 AS
-SELECT department.*
-FROM account
-RIGHT JOIN department USING (department_id)
-GROUP BY department_id
-HAVING COUNT(account_id) =
-    (SELECT MAX(account_count)
-    FROM
-        (SELECT COUNT(account_id) AS account_count
-        FROM account
-        RIGHT JOIN department USING (department_id)
-        GROUP BY department_id) AS t);
-
-CREATE OR REPLACE VIEW view_04 AS
-WITH c4 AS (
-    SELECT department.*, COUNT(account_id) AS account_count
+-- Question 6: Viết 1 store cho phép người dùng nhập vào 1 chuỗi
+-- và trả về group có tên chứa chuỗi của người dùng nhập vào
+-- hoặc trả về account có username chứa chuỗi của người dùng nhập vào
+DROP PROCEDURE IF EXISTS sp_06;
+DELIMITER $$
+CREATE PROCEDURE sp_06 (IN in_search VARCHAR(50))
+BEGIN
+    SELECT group_name AS name
+    FROM `group`
+    WHERE group_name LIKE CONCAT("%", in_search, "%")
+    UNION ALL
+    SELECT username AS name
     FROM account
-    RIGHT JOIN department USING (department_id)
-    GROUP BY department_id
+    WHERE username LIKE CONCAT("%", in_search, "%");
+END $$
+DELIMITER ;
+
+CALL sp_06("n");
+
+-- Question 8: Viết 1 store cho phép người dùng nhập vào
+-- Essay hoặc Multiple-Choice để thống kê câu hỏi essay hoặc
+-- multiple-choice nào có content dài nhất
+DROP PROCEDURE IF EXISTS sp_08;
+DELIMITER $$
+CREATE PROCEDURE sp_08 (
+    IN in_type_name ENUM("Essay", "Multiple-Choice")
 )
-SELECT *
-FROM c4
-WHERE account_count =
-    (SELECT MAX(account_count)
-    FROM c4);
+BEGIN
+    DECLARE v_type_id INT;
+    
+    SELECt type_id INTO v_type_id
+    FROM type_question
+    WHERE type_name = in_type_name;
+    
+    WITH c1 AS (
+        SELECT *, CHAR_LENGTH(content) AS content_length
+        FROM question
+        WHERE type_id = v_type_id
+    )
+    SELECT *
+    FROM c1
+    WHERE content_length =
+        (SELECT MAX(content_length)
+        FROM c1);
+END $$
+DELIMITER ;
 
--- Question 5: Tạo view có chứa tất các
--- các câu hỏi do user họ Nguyễn tạo
-CREATE OR REPLACE VIEW view_05 AS
-SELECT *
-FROM question
-WHERE creator_id IN
-    (SELECT account_id
-    FROM account
-    WHERE full_name LIKE "Nguyễn%");
+CALL sp_08("Essay");
 
+-- Question 9: Viết 1 store cho phép người dùng xóa exam dựa vào id
+DROP PROCEDURE IF EXISTS sp_09;
+DELIMITER $$
+CREATE PROCEDURE sp_09 (IN in_exam_id INT)
+BEGIN
+    DELETE FROM exam
+    WHERE exam_id = in_exam_id;
+END $$
+DELIMITER ;
 
-
+CALL sp_09(2);
 
 
 
