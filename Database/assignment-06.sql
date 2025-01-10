@@ -318,6 +318,61 @@ BEGIN
 END $$
 DELIMITER ;
 
+-- Question 4: Tạo store để trả ra id của type question
+-- có nhiều câu hỏi nhất
+DROP PROCEDURE IF EXISTS sp_04;
+DELIMITER $$
+CREATE PROCEDURE sp_04 (OUT out_type_id INT)
+BEGIN
+    WITH c1 AS (
+        SELECT type_id, COUNT(question_id) AS question_count
+        FROM question
+        RIGHT JOIN type_question USING (type_id)
+        GROUP BY type_id
+    )
+    SELECT type_id INTO out_type_id
+    FROM c1
+    WHERE question_count =
+        (SELECT MAX(question_count)
+        FROM c1);
+END $$
+DELIMITER ;
+
+DROP FUNCTION IF EXISTS fn_04;
+DELIMITER $$
+CREATE FUNCTION fn_04 () RETURNS INT
+BEGIN
+    DECLARE v_type_id INT;
+    
+    WITH c1 AS (
+        SELECT type_id, COUNT(question_id) AS question_count
+        FROM question
+        RIGHT JOIN type_question USING (type_id)
+        GROUP BY type_id
+    )
+    SELECT type_id INTO v_type_id
+    FROM c1
+    WHERE question_count =
+        (SELECT MAX(question_count)
+        FROM c1);
+        
+    RETURN v_type_id;
+END $$
+DELIMITER ;
+
+-- Question 5: Sử dụng store ở question 4
+-- để tìm ra tên của type question
+SET @type_id = NULL;
+CALL sp_04(@type_id);
+
+SELECT type_name
+FROM type_question
+WHERE type_id = @type_id;
+
+SELECT type_name
+FROM type_question
+WHERE type_id = fn_04();
+
 -- Question 6: Viết 1 store cho phép người dùng nhập vào 1 chuỗi
 -- và trả về group có tên chứa chuỗi của người dùng nhập vào
 -- hoặc trả về account có username chứa chuỗi của người dùng nhập vào
@@ -336,6 +391,45 @@ END $$
 DELIMITER ;
 
 CALL sp_06("n");
+
+-- Question 7: Viết 1 store cho phép người dùng
+-- nhập vào thông tin full_name, email và
+-- trong store sẽ tự động gán:
+-- username sẽ giống email nhưng bỏ phần @..mail đi
+-- position_id: sẽ có default là developer
+-- department_id: sẽ được cho vào 1 phòng chờ
+-- Sau đó in ra kết quả tạo thành công
+DROP PROCEDURE IF EXISTS sp_07;
+DELIMITER $$
+CREATE PROCEDURE sp_07 (
+    IN in_full_name VARCHAR(50),
+    IN in_email VARCHAR(50)
+)
+BEGIN
+    DECLARE v_username VARCHAR(50);
+    DECLARE v_position_id INT;
+    DECLARE v_department_id INT;
+
+    SELECT SUBSTRING_INDEX(in_email, "@", 1) INTO v_username;
+    
+    SELECT position_id INTO v_position_id
+    FROM position
+    WHERE position_name = "Dev";
+    
+    SELECT department_id INTO v_department_id
+    FROM department
+    WHERE department_name = "Phòng chờ";
+    
+    INSERT INTO account (full_name, email, username, position_id, department_id)
+    VALUES (in_full_name, in_email, v_username, v_position_id, v_department_id);
+    
+    SELECT *
+    FROM account
+    WHERE username = v_username;
+END $$
+DELIMITER ;
+
+CALL sp_07("Nguyễn Văn Khoa", "khoa.nv@gmail.com");
 
 -- Question 8: Viết 1 store cho phép người dùng nhập vào
 -- Essay hoặc Multiple-Choice để thống kê câu hỏi essay hoặc
@@ -378,6 +472,109 @@ END $$
 DELIMITER ;
 
 CALL sp_09(2);
+
+-- Question 11: Viết store cho phép người dùng xóa phòng ban
+-- bằng cách người dùng nhập vào tên phòng ban và các account
+-- thuộc phòng ban đó sẽ được chuyển về phòng ban
+-- default là phòng ban chờ việc
+DROP PROCEDURE IF EXISTS sp_11;
+DELIMITER $$
+CREATE PROCEDURE sp_11 (IN in_department_name VARCHAR(50))
+BEGIN
+    DECLARE v_department_id INT;
+    DECLARE v_waiting_id INT;
+
+    SELECT department_id INTO v_department_id
+    FROM department
+    WHERE department_name = in_department_name;
+    
+    SELECT department_id INTO v_waiting_id
+    FROM department
+    WHERE department_name = "Phòng chờ";
+    
+    UPDATE account
+    SET department_id = v_waiting_id
+    WHERE department_id = v_department_id;
+    
+    DELETE FROM department
+    WHERE department_id = v_department_id;
+END $$
+DELIMITER ;
+
+CALL sp_11("Marketing");
+
+-- Question 12: Viết store để in ra mỗi tháng
+-- có bao nhiêu câu hỏi được tạo trong năm nay
+WITH c1 AS (
+    SELECT YEAR(CURRENT_DATE) AS year, 1 AS month
+    UNION
+    SELECT YEAR(CURRENT_DATE) AS year, 2 AS month
+    UNION
+    SELECT YEAR(CURRENT_DATE) AS year, 3 AS month
+    UNION
+    SELECT YEAR(CURRENT_DATE) AS year, 4 AS month
+    UNION
+    SELECT YEAR(CURRENT_DATE) AS year, 5 AS month
+    UNION
+    SELECT YEAR(CURRENT_DATE) AS year, 6 AS month
+    UNION
+    SELECT YEAR(CURRENT_DATE) AS year, 7 AS month
+    UNION
+    SELECT YEAR(CURRENT_DATE) AS year, 8 AS month
+    UNION
+    SELECT YEAR(CURRENT_DATE) AS year, 9 AS month
+    UNION
+    SELECT YEAR(CURRENT_DATE) AS year, 10 AS month
+    UNION
+    SELECT YEAR(CURRENT_DATE) AS year, 11 AS month
+    UNION
+    SELECT YEAR(CURRENT_DATE) AS year, 12 AS month
+), c2 AS (
+    SELECT *, YEAR(create_date) AS year, MONTH(create_date) AS month
+    FROM question
+)
+SELECT year, month, COUNT(question_id)
+FROM c1
+LEFT JOIN c2 USING (year, month)
+GROUP BY year, month;
+
+-- Question 13: Viết store để in ra mỗi tháng
+-- có bao nhiêu câu hỏi được tạo trong 6 tháng gần đây nhất
+WITH c1 AS (
+    SELECT
+        YEAR(CURRENT_DATE - INTERVAL 1 MONTH) AS year,
+        MONTH(CURRENT_DATE - INTERVAL 1 MONTH) AS month
+    UNION
+    SELECT
+        YEAR(CURRENT_DATE - INTERVAL 2 MONTH) AS year,
+        MONTH(CURRENT_DATE - INTERVAL 2 MONTH) AS month
+    UNION
+    SELECT
+        YEAR(CURRENT_DATE - INTERVAL 3 MONTH) AS year,
+        MONTH(CURRENT_DATE - INTERVAL 3 MONTH) AS month
+    UNION
+    SELECT
+        YEAR(CURRENT_DATE - INTERVAL 4 MONTH) AS year,
+        MONTH(CURRENT_DATE - INTERVAL 4 MONTH) AS month
+    UNION
+    SELECT
+        YEAR(CURRENT_DATE - INTERVAL 5 MONTH) AS year,
+        MONTH(CURRENT_DATE - INTERVAL 5 MONTH) AS month
+    UNION
+    SELECT
+        YEAR(CURRENT_DATE - INTERVAL 6 MONTH) AS year,
+        MONTH(CURRENT_DATE - INTERVAL 6 MONTH) AS month
+), c2 AS (
+    SELECT *, YEAR(create_date) AS year, MONTH(create_date) AS month
+    FROM question
+)
+SELECT year, month, COUNT(question_id)
+FROM c1
+LEFT JOIN c2 USING (year, month)
+GROUP BY year, month;
+
+
+
 
 
 

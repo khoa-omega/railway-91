@@ -36,8 +36,46 @@ DELIMITER ;
 
 CALL sp_02();
 
+-- Từ khóa: IN / OUT / INOUT
+-- VD: Tạo thủ tục trả về tên phòng ban theo id
+DROP PROCEDURE IF EXISTS sp_03;
+DELIMITER $$
+CREATE PROCEDURE sp_03 (
+    IN in_department_id INT,
+    OUT out_department_name VARCHAR(50)
+)
+BEGIN
+    SELECT department_name INTO out_department_name
+    FROM department
+    WHERE department_id = in_department_id;
+END $$
+DELIMITER ;
 
+SET @department_name = NULL;
+CALL sp_03(8, @department_name);
+SELECT @department_name;
 
+-- FUNCTION: Hàm
+-- VD: Tạo function trả về tên phòng ban theo id
+DROP FUNCTION IF EXISTS fn_01;
+DELIMITER $$
+CREATE FUNCTION fn_01 (in_department_id INT) RETURNS VARCHAR(50)
+BEGIN
+    DECLARE v_department_name VARCHAR(50);
+    
+    SELECT department_name INTO v_department_name
+    FROM department
+    WHERE department_id = in_department_id;
+    
+    RETURN v_department_name;
+END $$
+DELIMITER ;
+
+-- Gọi function
+SELECT fn_01(10);
+
+-- Cho phép tạo function
+SET GLOBAL log_bin_trust_function_creators = TRUE;
 
 
 
