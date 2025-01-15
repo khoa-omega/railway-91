@@ -59,6 +59,28 @@ DELIMITER ;
 INSERT INTO group_account (account_id, group_id, join_date)
 VALUES (1, 10, "3000-01-01");
 
+-- CASE WHEN
+-- VD: Sử dụng CASE WHEN in ra số ngày trong tháng
+-- 2: có 28 hoặc 29
+-- 4, 6, 9, 11: có 30 ngày
+SELECT 
+    MONTH(CURRENT_DATE) AS month,
+    CASE
+        WHEN MONTH(CURRENT_DATE) = 2 THEN "28 hoặc 29 ngày"
+        WHEN MONTH(CURRENT_DATE) IN (4, 6, 9, 11) THEN "30 ngày"
+        ELSE "31 ngày"
+    END AS count;
+
+
+
+
+
+
+
+
+
+
+
 
 
 

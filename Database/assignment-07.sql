@@ -386,7 +386,138 @@ BEGIN
 END $$
 DELIMITER ;
 
+-- Question 7: Cấu hình 1 bài thi chỉ cho phép user
+-- tạo tối đa 4 answers cho mỗi question, trong đó có tối đa 2 đáp án đúng.
+DROP TRIGGER IF EXISTS trigger_07;
+DELIMITER $$
+CREATE TRIGGER trigger_07
+BEFORE INSERT ON answer
+FOR EACH ROW
+BEGIN
+    DECLARE v_answer_count INT;
+    DECLARE v_correct_answer_count INT;
 
+    SELECT COUNT(answer_id) INTO v_answer_count
+    FROM answer
+    WHERE question_id = NEW.question_id;
+    
+    IF v_answer_count >= 4 THEN
+        SIGNAL SQLSTATE "45000"
+        SET MESSAGE_TEXT = "Một câu hỏi có tối đa 4 câu trả lời";
+    END IF;
+    
+    SELECT COUNT(answer_id) INTO v_correct_answer_count
+    FROM answer
+    WHERE question_id = 1 AND is_correct = TRUE;
+    
+    IF v_correct_answer_count >= 2 AND NEW.is_correct = TRUE THEN
+        SIGNAL SQLSTATE "45000"
+        SET MESSAGE_TEXT = "Một câu hỏi có tối đa 2 câu trả lời đúng";
+    END IF;
+END $$
+DELIMITER ;
+
+-- Question 9: Viết trigger không cho phép người dùng
+-- xóa bài thi mới tạo được 2 ngày
+DROP TRIGGER IF EXISTS trigger_09;
+DELIMITER $$
+CREATE TRIGGER trigger_09
+BEFORE DELETE ON exam
+FOR EACH ROW
+BEGIN
+    IF OLD.create_date >= CURRENT_DATE - INTERVAL 2 DAY THEN
+        SIGNAL SQLSTATE "45000"
+        SET MESSAGE_TEXT = "Không được phép xóa bài thi mới tạo được 2 ngày";
+    END IF;
+END $$
+DELIMITER ;
+
+-- Question 10: Viết trigger chỉ cho phép người dùng chỉ được update,
+-- delete các question khi question đó chưa nằm trong exam nào
+DROP TRIGGER IF EXISTS trigger_10_update;
+DELIMITER $$
+CREATE TRIGGER trigger_10_update
+BEFORE UPDATE ON question
+FOR EACH ROW
+BEGIN
+    DECLARE v_exam_count INT;
+    
+    SELECT COUNT(exam_id) INTO v_exam_count
+    FROM exam_question
+    WHERE question_id = OLD.question_id;
+
+    IF v_exam_count > 0 THEN
+        SIGNAL SQLSTATE "45000"
+        SET MESSAGE_TEXT = "Không được phép cập nhật";
+    END IF;
+END $$
+DELIMITER ;
+
+DROP TRIGGER IF EXISTS trigger_10_delete;
+DELIMITER $$
+CREATE TRIGGER trigger_10_delete
+BEFORE DELETE ON question
+FOR EACH ROW
+BEGIN
+    DECLARE v_exam_count INT;
+    
+    SELECT COUNT(exam_id) INTO v_exam_count
+    FROM exam_question
+    WHERE question_id = OLD.question_id;
+
+    IF v_exam_count > 0 THEN
+        SIGNAL SQLSTATE "45000"
+        SET MESSAGE_TEXT = "Không được phép xóa";
+    END IF;
+END $$
+DELIMITER ;
+
+-- Question 12: Lấy ra thông tin exam trong đó:
+-- Duration <= 30 thì sẽ đổi thành giá trị "Short time"
+-- 30 < Duration <= 60 thì sẽ đổi thành giá trị "Medium time"
+-- Duration > 60 thì sẽ đổi thành giá trị "Long time"
+SELECT *,
+    CASE
+        WHEN duration <= 30 THEN "Short time"
+        WHEN duration <= 60 THEN "Medium time"
+        ELSE "Long time"
+    END AS duration_type
+FROM exam;
+
+-- Question 13: Thống kê số account trong mỗi group
+-- và in ra thêm 1 column nữa có tên
+-- là the_number_user_amount và mang giá trị được quy định như sau:
+-- Nếu số lượng user trong group <= 5 thì sẽ có giá trị là few
+-- Nếu số lượng user trong group <= 20 và > 5 thì sẽ có giá trị là normal
+-- Nếu số lượng user trong group > 20 thì sẽ có giá trị là higher
+WITH c1 AS (
+    SELECT `group`.*, COUNT(account_id) AS account_count
+    FROM group_account
+    RIGHT JOIN `group` USING (group_id)
+    GROUP BY group_id
+)
+SELECT *,
+    CASE
+        WHEN account_count <= 5 THEN "few"
+        WHEN account_count <= 20 THEN "normal"
+        ELSE "higher"
+    END AS the_number_user_amount
+FROM c1;
+
+-- Question 14: Thống kê số mỗi phòng ban có bao nhiêu user, nếu phòng ban nào
+-- không có user thì sẽ thay đổi giá trị 0 thành "Không có User" 
+WITH c1 AS (
+    SELECT department.*, COUNT(account_id) AS account_count
+    FROM department
+    LEFT JOIN account USING (department_id)
+    GROUP BY department_id
+)
+SELECT *,
+    CASE
+        WHEN account_count = 0 THEN "Không có user"
+        ELSE account_count
+    END AS count
+FROM c1;
 
 
 
